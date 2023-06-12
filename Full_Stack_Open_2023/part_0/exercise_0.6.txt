@@ -1,0 +1,10 @@
+sequenceDiagram
+    participant browser
+    participant server
+
+    browser->> POST https://fullstack-exampleapp.herokuapp.com/new_note_spa
+    activate server
+    //Logic handled by JS which the output data is sent as a JSON string
+    server->>browser: [{ "content": "sinle page app does not reload the whole page", "date":"2023-5-22T15:59:15.659Z" }, ... ]
+    deactivate server
+
