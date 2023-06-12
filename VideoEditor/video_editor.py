@@ -3,12 +3,13 @@ Main video editor script
 """
 
 import moviepy.editor as mp
+import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import speech_recognition as sr
 
-import trim_audio
-
+nltk.download('stopwords')
+nltk.download('punkt')
 VIDEO_FILE = "/home/deck/miniature-octo-waffle/VideoEditor/test_video.mp4"
 AUDIO_FILE = "/home/deck/miniature-octo-waffle/VideoEditor/test_audio.wav"
 
@@ -33,9 +34,10 @@ def filter_stopwords(text):
 def main():
     extract_audio(VIDEO_FILE, AUDIO_FILE)
     transcribed_text = transcribe_audio(AUDIO_FILE)
+    print(transcribed_text)
     filtered_text = filter_stopwords(transcribed_text)
-    print("Original Text: ".format(transcribed_text))
-    print("Filtered Text: ".format(filtered_text))
+    print("Original Text: {}".format(transcribed_text))
+    print("Filtered Text: {}".format(filtered_text))
 
 if __name__ == "__main__":
     main()
