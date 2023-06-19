@@ -1,7 +1,9 @@
+#!/usr/bin/python3
 """
 Main video editor script
 """
 
+import librosa
 import moviepy.editor as mp
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 import nltk
@@ -15,12 +17,7 @@ import sys
 import os
 import re
 
-#Arguments from GUI
-SILENCE_DURATION = int(sys.argv[1]) if sys.argv[1] else 2
-SILENCE_THRESHOLD = int(sys.argv[2]) if sys.argv[2] else 1500
-VIDEO_FILE = str(sys.argv[3])
-
-BUFFER = 0.5 #seconds
+BUFFER = 0.5  # seconds
 
 def get_audio_file(video_file):
     """
@@ -35,6 +32,7 @@ def get_audio_file(video_file):
 
     return audio_file_path
 
+
 def get_wav_data(audio_file):
     """
     Reads a .wav audio file and outputs the sample rate and audio data
@@ -43,19 +41,43 @@ def get_wav_data(audio_file):
 
     return sample_rate, audio_data
 
+def calculate_threshold_dB(audio_data, sample_rate, duration):
+    """
+    Returns the ambient noise level in dB
+    """
+    filtered_audio_data = np.array([])
+    for sample, data in enumerate(audio_data):
+        sample_timestamp = sample / sample_rate
+        if sample_timestamp <= duration:
+            filtered_audio_data = np.append(filtered_audio_data, data)
+        else:
+            break
+
+    filtered_audio_data = filtered_audio_data.astype(np.float32)
+    power = filtered_audio_data ** 2
+    dB_level = 10 * np.log10(power)
+
+    # Remove infinite or NaN values
+    finite_dB = dB_level[np.isfinite(dB_level)]
+
+    average_silence_dB = np.mean(finite_dB)
+
+    print(average_silence_dB)
+
 def plot(audio_data, audio_duration):
     """
     Uses the audio_data and audio_duration to plot the audio waves
     """
     time = np.linspace(0, audio_duration, len(audio_data))
 
-    #Plot the waveform
+    # Plot the waveform
     plt.figure(figsize=(10, 4))
     plt.plot(time, audio_data)
     plt.xlabel("Time (s)")
     plt.ylabel("Amplitude")
     plt.title("Waveform")
     plt.show()
+
 
 def get_audiofile_duration(audio_data, sample_rate):
     """
@@ -64,27 +86,16 @@ def get_audiofile_duration(audio_data, sample_rate):
     audio_duration = len(audio_data) / sample_rate
     return audio_duration
 
-def get_silence_timestamps(audio_data, sample_rate):
+def get_timestamps(audio_data, sample_rate, silence_threshold):
 
-    silence_samples = []
+    cut_samples = []
     for sample, amplitude in enumerate(audio_data):
-        if abs(amplitude[0]) > SILENCE_THRESHOLD:
-            silence_samples.append(sample)
+        if abs(amplitude[0]) > silence_threshold:
+            cut_samples.append(sample)
 
-    silence_timestamps = [sample / sample_rate for sample in silence_samples]
-    return silence_timestamps
-
-def get_timestamps(audio_data, sample_rate, silence=False):
-
-    samples = []
-    for sample, amplitude in enumerate(audio_data):
-        if silence == True and abs(amplitude[0]) > SILENCE_THRESHOLD:
-            samples.append(sample)
-        elif silence == False:
-            samples.append(sample)
-
-    timestamps = [sample / sample_rate for sample in samples]
+    timestamps = [sample / sample_rate for sample in cut_samples]
     return timestamps
+
 
 def cut_video(input_file, output_file, start_time, end_time):
     """
@@ -95,45 +106,49 @@ def cut_video(input_file, output_file, start_time, end_time):
     cut_video = video.subclip(start_time, end_time)
     cut_video.write_videofile(output_file, codec="libx264", audio_codec="aac")
 
-def timestamp_clips(timestamps, silence=False):
-    """
-    Uses the silence timestamps to outputs .mp4 files of the silences
-    from the original video
-    """
+
+def timestamp_clips(timestamps, silence_duration, video_file, progress_callback=None):
     curr_directory = get_curr_directory()
     create_tmp_directory()
 
     counter = 0
+    total_clips = len(timestamps) - 1
     for i, timestamp in enumerate(timestamps):
         try:
-            if silence == True and timestamps[i + 1] - timestamp >= SILENCE_DURATION:
-                cut_video(VIDEO_FILE,
+            if timestamps[i + 1] - timestamp >= silence_duration:
+                print("test")
+                cut_video(video_file,
                           "{}/tmp/silence_from_{}_to_{}_seconds.mp4".format(curr_directory, round(timestamp, 2), round(timestamps[i + 1], 2)),
                           timestamp,
-                          timestamps[i +1]
+                          timestamps[i + 1]
                           )
                 curr_start_silence_timestamp = timestamp + BUFFER
                 counter += 1
                 if counter == 1:
-                    cut_video(VIDEO_FILE,
+                    cut_video(video_file,
                               "{}/tmp/non_silence_from_{}_to_{}_seconds.mp4".format(curr_directory, "0", round(curr_start_silence_timestamp, 2)),
                               0,
                               curr_start_silence_timestamp
                               )
                     prev_end_silence_timestamp = timestamps[i + 1] - BUFFER
                 elif counter > 1:
-                    cut_video(VIDEO_FILE,
+                    cut_video(video_file,
                               "{}/tmp/non_silence_from_{}_to_{}_seconds.mp4".format(curr_directory, round(prev_end_silence_timestamp, 2), curr_start_silence_timestamp),
                               prev_end_silence_timestamp,
                               curr_start_silence_timestamp
                               )
                     prev_end_silence_timestamp = timestamps[i + 1] - BUFFER
+            # Calculate progress and send update to callback function
+            progress = (i + 1) / total_clips * 100
+            progress_callback(progress)
         except IndexError:
             break
+
 
 def get_curr_directory():
     curr_directory = os.getcwd()
     return curr_directory
+
 
 def create_tmp_directory():
     curr_directory = get_curr_directory()
@@ -142,47 +157,42 @@ def create_tmp_directory():
     if not os.path.exists(tmp_directory_path):
         os.mkdir(tmp_directory_path)
 
+
 def combine_videos():
-    """
-    Combines all the non_silence .mp4 files into one file, and outputs
-    them in the cwd
-    """
     curr_directory = get_curr_directory()
     video_files = [f for f in os.listdir("{}/tmp".format(curr_directory)) if f.endswith('.mp4') and 'non_silence' in f]
-    print(video_files)
     video_files = sorted(video_files, key=lambda x: re.search(r'\d+', x).group())
-    print(video_files)
 
     clips = []
     for video_file in video_files:
-        # Load each video file
         clip = mp.VideoFileClip(os.path.join("{}/tmp".format(curr_directory), video_file))
         clips.append(clip)
 
-    # Concatenate the video clips
-    final_clip = mp.concatenate_videoclips(clips)
+    if clips:
+        final_clip = mp.concatenate_videoclips(clips)
+        final_clip.write_videofile("{}/output_video.mp4".format(curr_directory))
 
-    # Write the final merged video to the output file
-    final_clip.write_videofile("{}/output_video.mp4".format(curr_directory))
+        final_clip.close()
+        for clip in clips:
+            clip.close()
+    else:
+        print("No video clips found.")
 
-    # Close the video clips
-    final_clip.close()
-    for clip in clips:
-        clip.close()
 
-def main():
+def main(silence_duration, silence_threshold, video_file, progress_callback=None):
     """
     Extracts the silences from a .mp4 from the silence parameters,
     and exports them as clips
     """
-    audio_file_path = get_audio_file(VIDEO_FILE)
+    audio_file_path = get_audio_file(video_file)
 
     sample_rate, audio_data = get_wav_data(audio_file_path)
-    silence_timestamps = get_timestamps(audio_data, sample_rate, silence=True)
-    timestamp_clips(silence_timestamps, silence=True)
+    silence_threshold = 1500 #calculate_threshold_dB(audio_data, sample_rate, 3)
+
+    silence_timestamps = get_timestamps(audio_data, sample_rate, silence_threshold=silence_threshold)
+    timestamp_clips(silence_timestamps, silence_duration=silence_duration, video_file=video_file, progress_callback=progress_callback)
     combine_videos()
 
+    if progress_callback:
+        progress_callback(100)
 
-
-if __name__ == "__main__":
-    main()
