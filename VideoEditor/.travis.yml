@@ -1,0 +1,20 @@
+os:
+  - osx
+
+language: generic
+
+matrix:
+  include:
+    - os: osx
+      os_image: xcode12.5
+
+before-install:
+  - echo "Before install"
+
+install:
+  - echo "Install dependencies"
+  - pip install -r requirements.txt
+
+script:
+  - echo "Build script"
+  - python video_editor_gui.py

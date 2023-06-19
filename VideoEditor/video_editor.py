@@ -3,17 +3,9 @@
 Main video editor script
 """
 
-import librosa
 import moviepy.editor as mp
-from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-import speech_recognition as sr
 import numpy as np
 from scipy.io import wavfile
-import matplotlib.pyplot as plt
-import sys
 import os
 import re
 
@@ -58,20 +50,6 @@ def calculate_threshold_dB(audio_data, sample_rate, duration):
     average_silence_dB = np.mean(positive_values)
 
     return average_silence_dB
-
-def plot(audio_data, audio_duration):
-    """
-    Uses the audio_data and audio_duration to plot the audio waves
-    """
-    time = np.linspace(0, audio_duration, len(audio_data))
-
-    # Plot the waveform
-    plt.figure(figsize=(10, 4))
-    plt.plot(time, audio_data)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Amplitude")
-    plt.title("Waveform")
-    plt.show()
 
 
 def get_audiofile_duration(audio_data, sample_rate):

@@ -3,8 +3,6 @@
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-import sys
-import time
 import video_editor
 
 curr_directory = os.getcwd()
