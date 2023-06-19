@@ -24,7 +24,7 @@ jobs:
       - name: Downgrade Tkinter
         run: |
           pip uninstall -y tkinter
-          pip install tkinter==8.5
+          pip install tkinter==8.6
 
       - name: Build script
         run: python VideoEditor/video_editor_gui.py
