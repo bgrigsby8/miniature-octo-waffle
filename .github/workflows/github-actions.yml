@@ -21,8 +21,5 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Downgrade Tkinter
-        run: pip install tkinter==8.6
-
       - name: Build script
         run: python VideoEditor/video_editor_gui.py
