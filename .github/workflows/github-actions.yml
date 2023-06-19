@@ -21,5 +21,5 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Build script
-        run: python VideoEditor/video_editor_gui.py
+      - name: Compile script
+        run: pyinstaller --onefile --noconfirm VideoEditor/video_editor_gui.py
