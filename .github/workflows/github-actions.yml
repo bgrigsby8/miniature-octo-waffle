@@ -26,3 +26,6 @@ jobs:
 
       - name: Compile script
         run: pyinstaller --onefile --noconfirm VideoEditor/video_editor_gui.py
+
+      - name: List directory contents
+        run: ls -R
