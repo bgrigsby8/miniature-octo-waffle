@@ -29,3 +29,6 @@ jobs:
 
       - name: List directory contents
         run: ls -R
+
+      - name: Move exe
+        run: mv ./dist/video_editor_gui .
